@@ -9,11 +9,34 @@ const my_star = {
     "story": "Testing the story 4"
 }
 
+function testGetBlockByHash(hash) {
+    console.log(`Attempting to get block by hash ${hash}...`);
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            // console.log(`got response: ${xhr.responseText}`);
+            if (xhr.status === 200) {
+                let response_json = JSON.parse(xhr.responseText);
+                if (response_json.hash === hash) {
+                    console.log("\x1b[32mtestGetBlockByHash: PASS\x1b[0m");
+                } else {
+                    console.log("\x1b[31mtestGetBlockByHash: FAIL\x1b[0m");
+                }
+            } else {
+                console.log("\x1b[31mtestGetBlockByHash: FAIL\x1b[0m");
+            }
+        }
+    }
+    xhr.open("GET", `http://localhost:8000/blockHash/${hash}`, true);
+    xhr.send();
+}
+
 function testGetValidation() {
     console.log(`Attempting to validate blockchain...`);
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
+            // console.log(`got response: ${xhr.responseText}`);
             if (xhr.status === 200) {
                 let response_json = JSON.parse(xhr.responseText);
                 if (response_json.error_list.length === 0) {
@@ -22,7 +45,7 @@ function testGetValidation() {
                     console.log("\x1b[31mtestGetValidation: FAIL\x1b[0m");
                 }
             } else {
-                console.log("\x1b[31mtestGetGenesisBlock: FAIL\x1b[0m");
+                console.log("\x1b[31mtestGetValidationk: FAIL\x1b[0m");
             }
         }
     }
@@ -45,7 +68,7 @@ function testGetStars(address) {
                 console.log("\x1b[32mtestGetStars: PASS\x1b[0m");
                 testGetValidation();
             } else {
-                console.log("\x1b[31mtestGetGenesisBlock: FAIL\x1b[0m");
+                console.log("\x1b[31mtestGetStars: FAIL\x1b[0m");
             }
         }
     }
@@ -61,6 +84,7 @@ function testSubmitStar(address, message) {
     let xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
+            // console.log(`got response: ${xhr.responseText}`);
             if (xhr.status === 200) {
                 console.log("\x1b[32mtestSubmitStar: PASS\x1b[0m");
                 testGetStars(my_address);
@@ -110,12 +134,14 @@ function testGetGenesisBlock() {
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
+            // console.log(`got response: ${xhr.responseText}`);
             if (xhr.status === 200) {
                 let response_json = JSON.parse(xhr.responseText);
                 if (response_json.previousBlockHash !== null) {
                     console.log("\x1b[31mtestGetGenesisBlock: FAIL\x1b[0m");
                 } else {
                     console.log("\x1b[32mtestGetGenesisBlock: PASS\x1b[0m");
+                    testGetBlockByHash(response_json.hash);
                 }
             } else {
                 console.log("\x1b[31mtestGetGenesisBlock: FAIL\x1b[0m");

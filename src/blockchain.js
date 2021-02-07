@@ -133,29 +133,30 @@ class Blockchain {
             let diff = currentTime - timestamp;
             if (diff >= five_minutes) {
                 console.log("time expired");
-                reject(self);
+                reject();
             }
             else {
                 try {
                     if (bitcoinMessage.verify(message, address, signature)) {
                         this._addBlock(new BlockClass.Block({ owner: address, data: star }))
-                            .then(() => {
+                            .then((block) => {
                                 console.log("new block added; current chain:");
                                 console.log(JSON.stringify(self.chain, null, 4));
-                                resolve(self);
+                                resolve(block);
                             })
                             .catch(function () {
                                 console.log("submitStar failed");
-                                reject(self);
+                                reject();
                             });
                     }
                     else {
                         console.log("bitcoinMessage.verify failed");
-                        reject(self);
+                        reject();
                     }
                 }
                 catch (err) {
                     console.log(err);
+                    reject();
                 }
             }
         });
@@ -172,14 +173,10 @@ class Blockchain {
         let found = false;
         return new Promise((resolve, reject) => {
             self.chain.forEach((block) => {
-                block.getBData().then((blk) => {
-                    if (blk.hash === hash) {
-                        found = true;
-                        blk.getBData().then((data) => {
-                            resolve(data);
-                        })
-                    }
-                });
+                if (block.hash === hash) {
+                    found = true;
+                    resolve(block);
+                }
             });
             if (!found) {
                 resolve(null);
@@ -195,7 +192,7 @@ class Blockchain {
     getBlockByHeight(height) {
         let self = this;
         return new Promise((resolve, reject) => {
-            let block = self.chain.filter(p => p.height === height)[0];
+            let block = self.chain.find(p => p.height === height);
             if (block) {
                 resolve(block);
             } else {
@@ -214,17 +211,12 @@ class Blockchain {
         let self = this;
         let stars = [];
         return new Promise((resolve, reject) => {
-            self.chain.forEach((block) => {
-                block.getBData()
-                    .then((data) => {
-                        if (data && data.owner === address) {
-                            stars.push(data.data);
-                        }
-                    })
-                    .catch((err) => {
-                        console.log(err);
-                    });
-            });
+            for (let ii = 0; ii < self.chain.length; ++ii) {
+                let data = self.chain[ii].getBData();
+                if (data && data.owner === address) {
+                    stars.push(data.data);
+                }
+            }
             resolve(stars);
         });
     }
@@ -239,14 +231,21 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
-            self.chain.forEach((block, index, chain) => {
-                block.validate()
-                    .then((valid) => {
-                        if (!valid) {
-                            errorLog.push({ index: "invalid" });
-                        }
-                    });
-            });
+            for (let ii = 0; ii < self.chain.length; ++ii) {
+                await self.chain[ii].validate()
+                .then((valid) => {
+                    if (!valid) {
+                        let err = {};
+                        err[self.chain[ii].hash] = "block hash corrupted";
+                        errorLog.push(err);
+                    }
+                });
+                if (ii > 0 && self.chain[ii].previousBlockHash !== self.chain[ii - 1].hash) {
+                    let err = {};
+                    err[self.chain[ii].hash] = "previous block hash does not match";
+                    errorLog.push(err);
+                }
+            }
             resolve(errorLog);
         });
     }
